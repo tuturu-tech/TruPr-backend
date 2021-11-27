@@ -176,6 +176,9 @@ const getEAResult = async (req, res) => {
 
 app.get("/api/twitter/:username", getTwitterId);
 app.post("/api/EA/", getEAResult);
+app.get("/", (req, res) => {
+  res.send("Hello world");
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
