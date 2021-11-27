@@ -1,11 +1,11 @@
-const express = require('express');
-const needle = require('needle');
-const cors = require('cors');
-const { hashCheck, unixToISO, cliffCheck } = require('./helpers');
+const express = require("express");
+const needle = require("needle");
+const cors = require("cors");
+const { hashCheck, unixToISO, cliffCheck } = require("./helpers");
 
-require('dotenv').config();
+require("dotenv").config();
 
-const app = express();
+const app = express.static("build");
 app.use(cors());
 app.use(express.json());
 
@@ -15,7 +15,7 @@ const getTwitterId = async (req, res) => {
   const params = {};
   const endpointURL = `https://api.twitter.com/2/users/by/username/${req.params.username}`;
   try {
-    const response = await needle('get', endpointURL, params, {
+    const response = await needle("get", endpointURL, params, {
       headers: {
         authorization: `Bearer ${token}`,
       },
@@ -29,12 +29,20 @@ const getTwitterId = async (req, res) => {
 };
 
 const getEAResult = async (req, res) => {
-  console.log('Res.body', req.body.taskParams);
+  console.log("Res.body", req.body.taskParams);
   //  res.status(200).send(req.body.taskParams);
   // return;
   const task = req.body.taskParams;
 
-  let params, endpointURL, hashUserId, response, failedResult, invalidResult, isPublic, userId, calldone;
+  let params,
+    endpointURL,
+    hashUserId,
+    response,
+    failedResult,
+    invalidResult,
+    isPublic,
+    userId,
+    calldone;
   const minAccountAge = 2592000;
   const startTime = unixToISO(task.startDate);
   const endTime = unixToISO(task.endDate);
@@ -63,50 +71,55 @@ const getEAResult = async (req, res) => {
     },
   };
 
-  if (endpoint === 'UserTimeline') {
+  if (endpoint === "UserTimeline") {
     isPublic = false;
     userId = task.promoterId;
     endpointURL = `https://api.twitter.com/2/users/${userId}/tweets`;
     hashUserId = false;
     params = {
-      exclude: 'retweets,replies',
+      exclude: "retweets,replies",
       start_time: startTime,
       end_time: endTime,
-      'tweet.fields': 'public_metrics,created_at',
+      "tweet.fields": "public_metrics,created_at",
     };
-  } else if (endpoint === 'Public') {
+  } else if (endpoint === "Public") {
     isPublic = true;
     const userAddress = task.walletAddress.toLowerCase();
     userId = task.userId;
     endpointURL = `https://api.twitter.com/2/users/${userId}`;
     params = {
-      'user.fields': 'created_at,public_metrics,description',
+      "user.fields": "created_at,public_metrics,description",
     };
 
-    response = await needle('get', endpointURL, params, {
+    response = await needle("get", endpointURL, params, {
       headers: {
         authorization: `Bearer ${token}`,
       },
     });
-    console.log('Response public', response.body);
+    console.log("Response public", response.body);
 
-    const checkAccountAge = cliffCheck(minAccountAge, response.body.data.created_at);
+    const checkAccountAge = cliffCheck(
+      minAccountAge,
+      response.body.data.created_at
+    );
 
     userId = response.body.data.id;
 
-    const bioArray = response.body.data.description.split(' ').map((i) => i.toLowerCase());
+    const bioArray = response.body.data.description
+      .split(" ")
+      .map((i) => i.toLowerCase());
     const accountBool = bioArray.includes(userAddress.toLowerCase());
-    console.log('BIO', bioArray);
-    console.log('My account?', accountBool);
+    console.log("BIO", bioArray);
+    console.log("My account?", accountBool);
 
     if (bioArray.includes(userAddress) && checkAccountAge) {
       endpointURL = `https://api.twitter.com/2/users/${userId}/tweets`;
       hashUserId = false;
       params = {
-        exclude: 'retweets,replies',
+        exclude: "retweets,replies",
         start_time: startTime,
         end_time: endTime,
-        'tweet.fields': 'public_metrics,created_at',
+        "tweet.fields": "public_metrics,created_at",
       };
     } else {
       calldone = true;
@@ -125,14 +138,14 @@ const getEAResult = async (req, res) => {
   }
 
   // this is the HTTP header that adds bearer token authentication
-  response = await needle('get', endpointURL, params, {
+  response = await needle("get", endpointURL, params, {
     headers: {
       authorization: `Bearer ${token}`,
     },
   });
 
   if (response.body) {
-    console.log('Resbody', response.body);
+    console.log("Resbody", response.body);
     if (!response.body.data) {
       res.send(invalidResult);
       return invalidResult;
@@ -141,14 +154,14 @@ const getEAResult = async (req, res) => {
     const tweetArr = response.body.data.map((obj) => {
       return obj;
     });
-    console.log('Metric test', metric !== 'Time');
+    console.log("Metric test", metric !== "Time");
     response.body.data = hashCheck(
       hashUserId,
       userId,
       messageHash,
       tweetArr,
       cliff,
-      metric !== 'Time' ? response.body.data[0].public_metrics[metric] : 'Time',
+      metric !== "Time" ? response.body.data[0].public_metrics[metric] : "Time",
       taskId,
       isPublic
     );
@@ -157,12 +170,12 @@ const getEAResult = async (req, res) => {
 
     return response.body;
   } else {
-    res.status(500).send('Error');
+    res.status(500).send("Error");
   }
 };
 
-app.get('/api/twitter/:username', getTwitterId);
-app.post('/api/EA/', getEAResult);
+app.get("/api/twitter/:username", getTwitterId);
+app.post("/api/EA/", getEAResult);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
