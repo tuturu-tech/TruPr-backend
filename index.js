@@ -5,7 +5,7 @@ const { hashCheck, unixToISO, cliffCheck } = require("./helpers");
 
 require("dotenv").config();
 
-const app = express.static("build");
+const app = express();
 app.use(cors());
 app.use(express.json());
 
